@@ -88,17 +88,7 @@ function installtunnel(){
     echo "AnyTLS Mode Setup"
     port=443 # Force 443 for interactive setup context
     
-    if [ -f "/opt/argotunnel/domain.txt" ]; then
-        default_domain=$(cat /opt/argotunnel/domain.txt)
-    fi
-    
-    if [ -n "$default_domain" ]; then
-        estimated_base=$(echo $default_domain | head -n1 | awk '{print $1}' | cut -d. -f2-)
-        read -p "输入域名 (例如: example.com, 默认: $estimated_base): " base_domain
-        [ -z "$base_domain" ] && base_domain=$estimated_base
-    else
-        read -p "输入域名 (例如: example.com): " base_domain
-    fi
+    read -p "输入域名 (例如: example.com): " base_domain
     
     if [ -z "$base_domain" ] || [ $(echo $base_domain | grep "\." | wc -l) == 0 ]; then
         echo 域名格式不正确
