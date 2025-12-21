@@ -102,7 +102,7 @@ function installtunnel(){
 
     ENABLE_SSL="n"
     SKIP_ISSUANCE=0
-    CERT_FILE="/opt/argotunnel/cert/fullchain.crt"
+    CERT_FILE="/opt/argotunnel/server.crt"
     
     echo "Checking for valid certificate..."
     if [ -f "$CERT_FILE" ]; then
@@ -186,14 +186,14 @@ function installtunnel(){
             
             if [ $? -eq 0 ]; then
                 echo "Certificate issued."
-                mkdir -p /opt/argotunnel/cert
+                # anytls-server likely expects server.crt/server.key in CWD
                 /root/.acme.sh/acme.sh --install-cert -d ${first_domain} \
-                    --key-file       /opt/argotunnel/cert/private.key  \
-                    --fullchain-file /opt/argotunnel/cert/fullchain.crt \
+                    --key-file       /opt/argotunnel/server.key  \
+                    --fullchain-file /opt/argotunnel/server.crt \
                     --reloadcmd      "systemctl restart anytls.service"
                 
-                SSL_CERT_PATH="/opt/argotunnel/cert/fullchain.crt"
-                SSL_KEY_PATH="/opt/argotunnel/cert/private.key"
+                SSL_CERT_PATH="/opt/argotunnel/server.crt"
+                SSL_KEY_PATH="/opt/argotunnel/server.key"
             else
                 echo "Certificate issuance failed."
                 read -e -p "Do you want to continue with an INSECURE (HTTP) link? (y/n): " continue_insecure
@@ -206,8 +206,8 @@ function installtunnel(){
                 fi
             fi
         else
-            SSL_CERT_PATH="/opt/argotunnel/cert/fullchain.crt"
-            SSL_KEY_PATH="/opt/argotunnel/cert/private.key"
+            SSL_CERT_PATH="/opt/argotunnel/server.crt"
+            SSL_KEY_PATH="/opt/argotunnel/server.key"
         fi
     fi
 
@@ -232,14 +232,15 @@ After=network.target
 
 [Service]
 Type=simple
+WorkingDirectory=/opt/argotunnel
 ExecStart=/opt/argotunnel/anytls-server -l $LISTEN_IP:$port -p $ANYTLS_PASS
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    systemctl enable anytls.service >/dev/null 2>&1
     systemctl --system daemon-reload
+    systemctl enable anytls.service >/dev/null 2>&1
     systemctl restart anytls.service
 
     echo "------------------------------------------------"
