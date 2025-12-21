@@ -106,17 +106,18 @@ function installtunnel(){
     
     echo "Checking for valid certificate..."
     if [ -f "$CERT_FILE" ]; then
-         if openssl x509 -noout -text -in "$CERT_FILE" | grep -q "$first_domain"; then
-             echo "Certificate domain match: YES"
-             if openssl x509 -checkend 86400 -noout -in "$CERT_FILE" >/dev/null 2>&1; then
-                 echo "Certificate is valid."
+         # Check expiration
+         if openssl x509 -checkend 86400 -noout -in "$CERT_FILE" >/dev/null 2>&1; then
+             # Check domain match (CN or SAN)
+             if openssl x509 -noout -text -in "$CERT_FILE" | grep -E "DNS:${first_domain}|CN=${first_domain}" >/dev/null 2>&1; then
+                 echo "Certificate found and valid for ${first_domain}."
                  ask_ssl="y"
                  SKIP_ISSUANCE=1
              else
-                 echo "Certificate expired."
+                 echo "Certificate found but domain mismatch."
              fi
          else
-             echo "Certificate domain match: NO"
+             echo "Certificate found but expired."
          fi
     fi
 
