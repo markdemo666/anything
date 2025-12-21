@@ -257,7 +257,9 @@ server {
 }
 EOF
         # Reload Nginx to apply config
-        systemctl reload nginx
+        # Reload Nginx to apply config
+        systemctl enable nginx >/dev/null 2>&1
+        systemctl restart nginx
         
         LISTEN_ADDR="127.0.0.1"
     else
