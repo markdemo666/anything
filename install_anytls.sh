@@ -38,6 +38,10 @@ if [ -z $(type -P openssl) ]; then
     ${linux_update[$n]}
     ${linux_install[$n]} openssl
 fi
+if [ -z $(type -P lsof) ]; then
+    ${linux_update[$n]}
+    ${linux_install[$n]} lsof
+fi
 
 function installtunnel(){
     mkdir -p /opt/argotunnel/
@@ -137,6 +141,15 @@ function installtunnel(){
                 curl https://get.acme.sh | sh
                 /root/.acme.sh/acme.sh --register-account -m admin@${base_domain}
             fi
+
+            # Check Port 80 occupancy
+            if lsof -i :80 > /dev/null 2>&1; then
+                echo "Warning: Port 80 is currently in use by the following process(es):"
+                lsof -i :80
+                echo "The script needs to stop these processes to request the certificate."
+                read -p "Press Enter to stop these processes and continue, or Ctrl+C to abort..."
+            fi
+
             systemctl stop nginx >/dev/null 2>&1
             fuser -k 80/tcp >/dev/null 2>&1
             
