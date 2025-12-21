@@ -233,6 +233,9 @@ function installtunnel(){
 
     # Service Creation Logic
     if [ "$ENABLE_SSL" == "y" ]; then
+        # Clean up known conflicting configs that might block Nginx startup
+        rm -f /etc/nginx/conf.d/hysteria2-ssl.conf
+
         # Generate Nginx Configuration for AnyTLS
         cat > /etc/nginx/conf.d/${base_domain}_anytls.conf <<EOF
 server {
