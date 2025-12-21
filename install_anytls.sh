@@ -216,18 +216,21 @@ function installtunnel(){
     # Generate AnyTLS Link
     echo -e "AnyTLS Links Generated\n" >/opt/argotunnel/anytls_links.txt
     
-    link="anytls://${ANYTLS_PASS}@${domain}:${port}/?insecure=1#${isp}"
     if [ "$ENABLE_SSL" == "y" ]; then
-         link="anytls://${ANYTLS_PASS}@${domain}:${port}/?insecure=0#${isp}"
+         link="anytls://${ANYTLS_PASS}@${domain}:443/?insecure=0#${isp}"
+         echo -e "--- AnyTLS Link for ${domain} (Port 443) ---" >>/opt/argotunnel/anytls_links.txt
+    else
+         link="anytls://${ANYTLS_PASS}@${domain}:${port}/?insecure=1#${isp}"
+         echo -e "--- AnyTLS Link for ${domain} (Port $port) ---" >>/opt/argotunnel/anytls_links.txt
     fi
     
-    echo -e "--- AnyTLS Link for ${domain} (Port $port) ---" >>/opt/argotunnel/anytls_links.txt
     echo "$link" >>/opt/argotunnel/anytls_links.txt
     echo "" >>/opt/argotunnel/anytls_links.txt
 
     # Service Creation Logic
-    # Generate Nginx Configuration for AnyTLS
-    cat > /etc/nginx/conf.d/${base_domain}_anytls.conf <<EOF
+    if [ "$ENABLE_SSL" == "y" ]; then
+        # Generate Nginx Configuration for AnyTLS
+        cat > /etc/nginx/conf.d/${base_domain}_anytls.conf <<EOF
 server {
     listen 443 ssl http2;
     server_name ${base_domain};
@@ -253,9 +256,14 @@ server {
     }
 }
 EOF
-    
-    # Reload Nginx to apply config
-    systemctl reload nginx
+        # Reload Nginx to apply config
+        systemctl reload nginx
+        
+        LISTEN_ADDR="127.0.0.1"
+    else
+        # Standalone mode - Listen on all interfaces
+        LISTEN_ADDR="0.0.0.0"
+    fi
 
     echo "Creating AnyTLS Service..."
     cat > /lib/systemd/system/anytls.service <<EOF
@@ -266,8 +274,9 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/argotunnel
-ExecStart=/opt/argotunnel/anytls-server -l 127.0.0.1:$port -p $ANYTLS_PASS
+ExecStart=/opt/argotunnel/anytls-server -l ${LISTEN_ADDR}:$port -p $ANYTLS_PASS
 Restart=on-failure
+
 
 [Install]
 WantedBy=multi-user.target
