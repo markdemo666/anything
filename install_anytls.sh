@@ -46,6 +46,10 @@ if [ -z $(type -P nginx) ]; then
     ${linux_update[$n]}
     ${linux_install[$n]} nginx
 fi
+# Install Nginx Stream Module
+if ! dpkg -l | grep -q libnginx-mod-stream; then
+     ${linux_install[$n]} libnginx-mod-stream
+fi
 
 function installtunnel(){
     mkdir -p /opt/argotunnel/
@@ -233,38 +237,37 @@ function installtunnel(){
 
     # Service Creation Logic
     if [ "$ENABLE_SSL" == "y" ]; then
-        # Clean up known conflicting configs that might block Nginx startup
+        # Clean up known conflicting configs
         rm -f /etc/nginx/conf.d/hysteria2-ssl.conf
+        rm -f /etc/nginx/conf.d/${base_domain}_anytls.conf # Start fresh
 
-        # Generate Nginx Configuration for AnyTLS
-        cat > /etc/nginx/conf.d/${base_domain}_anytls.conf <<EOF
+        # Ensure Nginx Stream Directory Exists
+        mkdir -p /etc/nginx/streams-enabled
+        
+        # Enable Stream Module in nginx.conf if not present
+        if ! grep -q "streams-enabled" /etc/nginx/nginx.conf; then
+            echo "stream { include /etc/nginx/streams-enabled/*.conf; }" >> /etc/nginx/nginx.conf
+        fi
+
+        # Generate Nginx Stream Configuration for AnyTLS (Layer 4 Proxy)
+        cat > /etc/nginx/streams-enabled/${base_domain}_anytls.conf <<EOF
 server {
-    listen 443 ssl http2;
-    server_name ${base_domain};
-
+    listen 443 ssl;
+    proxy_pass 127.0.0.1:$port;
+    
+    # SSL Termination (Frontend)
     ssl_certificate /opt/argotunnel/server.crt;
     ssl_certificate_key /opt/argotunnel/server.key;
-    
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
-
-    location / {
-        proxy_pass https://127.0.0.1:$port;
-        proxy_ssl_verify off;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        
-        # WebSocket support (if needed by AnyTLS underlying protocol)
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
+    
+    # SSL Proxy to Backend (AnyTLS requires TLS)
+    proxy_ssl on;
+    proxy_ssl_verify off; # Trust self-signed backend
+    proxy_ssl_server_name on;
 }
 EOF
-        # Reload Nginx to apply config
         # Reload Nginx to apply config
         systemctl enable nginx >/dev/null 2>&1
         systemctl restart nginx
@@ -322,6 +325,7 @@ function uninstall_anytls() {
     
     # Remove Nginx Config
     rm -f /etc/nginx/conf.d/*_anytls.conf
+    rm -f /etc/nginx/streams-enabled/*_anytls.conf
     systemctl reload nginx >/dev/null 2>&1
     
     # Optionally remove certs if they were created by us
