@@ -86,7 +86,8 @@ function installtunnel(){
     fi
 
     echo "AnyTLS Mode Setup"
-    port=443 # Force 443 for interactive setup context
+    # Internal port for AnyTLS (Nginx will proxy to this)
+    local port=8443
     
     read -e -p "输入域名 (例如: example.com): " base_domain
     
@@ -186,11 +187,12 @@ function installtunnel(){
             
             if [ $? -eq 0 ]; then
                 echo "Certificate issued."
-                # anytls-server likely expects server.crt/server.key in CWD
+                # Nginx will handle SSL, so we install certs where Nginx expects them or just use the acme path directly
+                # But to follow the script's pattern, we copy them.
                 /root/.acme.sh/acme.sh --install-cert -d ${first_domain} \
                     --key-file       /opt/argotunnel/server.key  \
                     --fullchain-file /opt/argotunnel/server.crt \
-                    --reloadcmd      "systemctl restart anytls.service"
+                    --reloadcmd      "systemctl reload nginx"
                 
                 SSL_CERT_PATH="/opt/argotunnel/server.crt"
                 SSL_KEY_PATH="/opt/argotunnel/server.key"
@@ -224,6 +226,37 @@ function installtunnel(){
     echo "" >>/opt/argotunnel/anytls_links.txt
 
     # Service Creation Logic
+    # Generate Nginx Configuration for AnyTLS
+    cat > /etc/nginx/conf.d/${base_domain}_anytls.conf <<EOF
+server {
+    listen 443 ssl http2;
+    server_name ${base_domain};
+
+    ssl_certificate /opt/argotunnel/server.crt;
+    ssl_certificate_key /opt/argotunnel/server.key;
+    
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    location / {
+        proxy_pass http://127.0.0.1:$port;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # WebSocket support (if needed by AnyTLS underlying protocol)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+EOF
+    
+    # Reload Nginx to apply config
+    systemctl reload nginx
+
     echo "Creating AnyTLS Service..."
     cat > /lib/systemd/system/anytls.service <<EOF
 [Unit]
@@ -233,7 +266,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/argotunnel
-ExecStart=/opt/argotunnel/anytls-server -l $LISTEN_IP:$port -p $ANYTLS_PASS
+ExecStart=/opt/argotunnel/anytls-server -l 127.0.0.1:$port -p $ANYTLS_PASS
 Restart=on-failure
 
 [Install]
@@ -267,6 +300,10 @@ function uninstall_anytls() {
     rm -f /opt/argotunnel/anytls_links.txt
     rm -f /tmp/anytls.zip
     rm -rf /tmp/anytls_bin
+    
+    # Remove Nginx Config
+    rm -f /etc/nginx/conf.d/*_anytls.conf
+    systemctl reload nginx >/dev/null 2>&1
     
     # Optionally remove certs if they were created by us
     # rm -rf /opt/argotunnel/cert 
