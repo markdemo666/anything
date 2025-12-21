@@ -88,7 +88,7 @@ function installtunnel(){
     echo "AnyTLS Mode Setup"
     port=443 # Force 443 for interactive setup context
     
-    read -p "输入域名 (例如: example.com): " base_domain
+    read -e -p "输入域名 (例如: example.com): " base_domain
     
     if [ -z "$base_domain" ] || [ $(echo $base_domain | grep "\." | wc -l) == 0 ]; then
         echo 域名格式不正确
@@ -122,7 +122,7 @@ function installtunnel(){
     fi
 
     if [ "$SKIP_ISSUANCE" == "0" ]; then
-         read -p "是否申请SSL证书 (需占用80端口)? (y/n, 默认n): " ask_ssl
+         read -e -p "是否申请SSL证书 (需占用80端口)? (y/n, 默认n): " ask_ssl
     fi
 
     if [ "$ask_ssl" == "y" ] || [ "$ask_ssl" == "Y" ]; then
@@ -143,12 +143,12 @@ function installtunnel(){
                 
                 if [ -n "$container_id" ]; then
                      echo "Detected Docker container ($container_id) using port 80."
-                     read -p "Press Enter to stop this container and continue, or Ctrl+C to abort..."
+                     read -e -p "Press Enter to stop this container and continue, or Ctrl+C to abort..."
                      echo "Stopping container $container_id..."
                      docker stop $container_id
                 else
                      echo "The script needs to stop these processes to request the certificate."
-                     read -p "Press Enter to stop these processes and continue, or Ctrl+C to abort..."
+                     read -e -p "Press Enter to stop these processes and continue, or Ctrl+C to abort..."
                      systemctl stop nginx >/dev/null 2>&1
                      fuser -k 80/tcp >/dev/null 2>&1
                 fi
@@ -260,7 +260,7 @@ echo "=============================="
 echo "1. 安装 AnyTLS"
 echo "2. 卸载 AnyTLS"
 echo "0. 退出"
-read -p "请选择菜单 (默认1): " menu
+read -e -p "请选择菜单 (默认1): " menu
 [ -z "$menu" ] && menu=1
 
 if [ "$menu" == "1" ]; then
