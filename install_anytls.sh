@@ -195,8 +195,15 @@ function installtunnel(){
                 SSL_CERT_PATH="/opt/argotunnel/cert/fullchain.crt"
                 SSL_KEY_PATH="/opt/argotunnel/cert/private.key"
             else
-                echo "Certificate failed. Fallback to insecure."
-                ENABLE_SSL="n"
+                echo "Certificate issuance failed."
+                read -e -p "Do you want to continue with an INSECURE (HTTP) link? (y/n): " continue_insecure
+                if [ "$continue_insecure" == "y" ] || [ "$continue_insecure" == "Y" ]; then
+                    echo "Fallback to insecure mode."
+                    ENABLE_SSL="n"
+                else
+                    echo "Aborting installation."
+                    exit 1
+                fi
             fi
         else
             SSL_CERT_PATH="/opt/argotunnel/cert/fullchain.crt"
