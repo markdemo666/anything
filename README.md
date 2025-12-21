@@ -45,5 +45,3 @@ bash install_anytls.sh
 **结论：** 您现在拥有了 **Nginx 的合法证书伪装** + **AnyTLS 的核心传输能力**，这是目前最稳健的配置方式。
 
 ---
-
-**需要我为您生成具体的 Nginx `stream` 模块配置代码示例，以便您补充到 README 中吗？**
