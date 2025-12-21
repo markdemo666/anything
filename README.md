@@ -1,7 +1,7 @@
 
 ---
 
-# AnyTLS + Nginx 增强部署方案
+# AnyTLS + Nginx 增强部署方案 一键安装管理脚本
 
 本方案通过 Nginx 为 AnyTLS 提供合法的 TLS 证书伪装，在不损失 AnyTLS 核心功能的前提下，极大地提升了节点的隐蔽性与安全性。
 
