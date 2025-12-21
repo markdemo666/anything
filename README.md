@@ -1,16 +1,22 @@
+AnyTLS + Nginx 增强部署方案
+本方案通过 Nginx 为 AnyTLS 提供合法的 TLS 证书伪装，在不损失 AnyTLS 核心功能的前提下，极大地提升了节点的隐蔽性与安全性。
+
+🚀 快速安装
+在终端执行以下命令开始安装：
+
+Bash
+
 wget https://raw.githubusercontent.com/markdemo666/anything/refs/heads/main/install_anytls.sh
+bash install_anytls.sh
+🛡️ 为什么选择 Nginx + AnyTLS？
+使用 Nginx 并不会削弱 AnyTLS 的功能，反而是为其穿上了一层更完美的“伪装衣”。
 
+1. 外层伪装（由 Nginx 负责）
+合法证书： 节点对外展示的是经过权威机构（如 Let's Encrypt）签发的合法证书，而非之前易被识别的自签名证书。
 
+完美混淆： 在防火墙或运营商看来，您的流量表现为正常的、安全的 HTTPS (Port 443) 访问。这显著降低了被主动探测和阻断的风险。
 
-使用 Nginx 并不会削弱 AnyTLS 的功能，反而是给它穿上了一层更完美的“伪装衣”，安全性其实是提升了。
+2. 内核协议（由 AnyTLS 负责）
+透明转发： Nginx 利用 stream 模块（第四层转发）充当传输管道。
 
-具体来说：
-
-外层伪装（Nginx 负责）：
-现在您的节点对外展示的是合法的 Let's Encrypt 证书（之前 AnyTLS 只能生成不被信任的自签名证书）。
-在外人（如防火墙或运营商）看来，您的流量不仅加密了，而且完全像是在访问一个正常的、安全的 HTTPS 网站。这大大降低了被探测和阻断的风险。
-内核协议（AnyTLS 负责）：
-Nginx 使用 stream 模块（第四层转发）只是充当了一个“传输管道”。
-它在完成 SSL 握手后，会将数据流原封不动地传递给后端的 AnyTLS。
-AnyTLS 特有的协议逻辑、用户认证等核心功能完全保留，依然由 AnyTLS 程序自己处理。
-总结： 您现在拥有了 Nginx 的合法证书伪装 + AnyTLS 的核心传输能力，这是目前最稳健的配置方式。
+完整保留： 在完成 SSL 握手后，数据流会原封不动地传递给后端的 AnyTLS。AnyTLS 特有的协议逻辑、用户认证等核心功能完全由其自身处理。
