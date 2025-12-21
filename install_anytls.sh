@@ -158,6 +158,28 @@ function installtunnel(){
                 fuser -k 80/tcp >/dev/null 2>&1
             fi
 
+            # Verification Loop: Wait up to 10 seconds for Port 80 to free up
+            echo "Verifying Port 80 release..."
+            for i in {1..10}; do
+                if ! lsof -i :80 > /dev/null 2>&1; then
+                    echo "Port 80 is free."
+                    break
+                fi
+                echo "Waiting for Port 80 to be released ($i/10)..."
+                sleep 1
+            done
+
+            # Final check and force kill if necessary
+            if lsof -i :80 > /dev/null 2>&1; then
+                 echo "Port 80 is still in use! Attempting force kill..."
+                 fuser -k -9 80/tcp >/dev/null 2>&1
+                 sleep 1
+            fi
+            
+            if lsof -i :80 > /dev/null 2>&1; then
+                 echo "Error: Failed to free Port 80. Cannot proceed with SSL issuance."
+                 exit 1
+            fi
 
             
             /root/.acme.sh/acme.sh --issue --server letsencrypt --standalone -d $domain --force
