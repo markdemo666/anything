@@ -232,6 +232,27 @@ EOF
     fi
 
     # 3. Generate Config YAML
+    log_info "DEBUG: CONFIG_DIR=[$CONFIG_DIR]"
+    log_info "DEBUG: CONFIG_FILE=[$CONFIG_FILE]"
+    
+    if [ ! -d "$CONFIG_DIR" ]; then
+        log_info "Directory $CONFIG_DIR does not exist. Creating..."
+        mkdir -pv "$CONFIG_DIR"
+        if [ $? -ne 0 ]; then
+            log_error "Failed to create directory $CONFIG_DIR"
+            exit 1
+        fi
+    else
+        log_info "Directory $CONFIG_DIR already exists."
+    fi
+
+    if [ ! -w "$CONFIG_DIR" ]; then
+        log_error "Directory $CONFIG_DIR is not writable."
+        ls -ld "$CONFIG_DIR"
+        exit 1
+    fi
+
+    log_info "Writing config to $CONFIG_FILE..."
     cat > "$CONFIG_FILE" <<EOF
 listen: :$port
 
