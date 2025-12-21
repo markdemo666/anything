@@ -42,6 +42,10 @@ if [ -z $(type -P lsof) ]; then
     ${linux_update[$n]}
     ${linux_install[$n]} lsof
 fi
+if [ -z $(type -P nginx) ]; then
+    ${linux_update[$n]}
+    ${linux_install[$n]} nginx
+fi
 
 function installtunnel(){
     mkdir -p /opt/argotunnel/
