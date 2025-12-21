@@ -97,7 +97,7 @@ function installtunnel(){
     
     echo "Using domain: $base_domain"
     domain="$base_domain"
-    echo "$domain" > /opt/argotunnel/domain.txt
+    
     first_domain=$domain
 
     ENABLE_SSL="n"
@@ -133,16 +133,32 @@ function installtunnel(){
                 /root/.acme.sh/acme.sh --register-account -m admin@${base_domain}
             fi
 
-            # Check Port 80 occupancy
+            # Check Port 80 occupancy & Handle Docker
             if lsof -i :80 > /dev/null 2>&1; then
-                echo "Warning: Port 80 is currently in use by the following process(es):"
+                echo "Warning: Port 80 is currently in use."
                 lsof -i :80
-                echo "The script needs to stop these processes to request the certificate."
-                read -p "Press Enter to stop these processes and continue, or Ctrl+C to abort..."
+                
+                # Check if it's Docker
+                container_id=$(docker ps --format '{{.ID}}\t{{.Ports}}' | grep "0.0.0.0:80->" | awk '{print $1}')
+                
+                if [ -n "$container_id" ]; then
+                     echo "Detected Docker container ($container_id) using port 80."
+                     read -p "Press Enter to stop this container and continue, or Ctrl+C to abort..."
+                     echo "Stopping container $container_id..."
+                     docker stop $container_id
+                else
+                     echo "The script needs to stop these processes to request the certificate."
+                     read -p "Press Enter to stop these processes and continue, or Ctrl+C to abort..."
+                     systemctl stop nginx >/dev/null 2>&1
+                     fuser -k 80/tcp >/dev/null 2>&1
+                fi
+            else
+                # Just in case nothing was detected by lsof but something is lurking
+                systemctl stop nginx >/dev/null 2>&1
+                fuser -k 80/tcp >/dev/null 2>&1
             fi
 
-            systemctl stop nginx >/dev/null 2>&1
-            fuser -k 80/tcp >/dev/null 2>&1
+
             
             /root/.acme.sh/acme.sh --issue --server letsencrypt --standalone -d $domain --force
             
@@ -227,6 +243,7 @@ function uninstall_anytls() {
     
     systemctl --system daemon-reload
     echo "AnyTLS 卸载完成"
+    echo "注意: 证书文件保留在 /opt/argotunnel/cert 目录下未删除。"
 }
 
 # START EXECUTION
