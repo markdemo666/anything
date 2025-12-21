@@ -94,16 +94,30 @@ CONFIG_FILE="$CONFIG_DIR/config.yaml"
 CERT_DIR="/opt/argotunnel"
 CERT_FILE="$CERT_DIR/server.crt"
 KEY_FILE="$CERT_DIR/server.key"
-# AnyTLS/Shared Cert Directory
-CERT_DIR="/opt/argotunnel"
-CERT_FILE="$CERT_DIR/server.crt"
-KEY_FILE="$CERT_DIR/server.key"
+
 
 handle_cert_issuance() {
     local domain=$1
     if [ -z "$domain" ]; then
         log_error "申请 SSL 证书需要提供域名。"
         return 1
+    fi
+
+    # Check for existing certificate
+    if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
+        # Try to extract CN. handling different openssl output formats
+        local cert_cn=$(openssl x509 -noout -subject -in "$CERT_FILE" 2>/dev/null | sed -n '/^subject/s/^.*CN *= *//p')
+        
+        # If successfully extracted and matches
+        if [[ -n "$cert_cn" && "$cert_cn" == "$domain" ]]; then
+            log_success "检测到域名 $domain 的现有证书。"
+            read -e -p "是否使用现有证书? [Y/n]: " use_exist
+            use_exist=${use_exist:-Y}
+            if [[ "$use_exist" == "y" || "$use_exist" == "Y" ]]; then
+                log_info "已选择使用现有证书。"
+                return 0
+            fi
+        fi
     fi
 
     log_info "准备为 $domain 申请 SSL 证书..."
