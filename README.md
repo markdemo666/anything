@@ -1,3 +1,7 @@
+wget https://raw.githubusercontent.com/markdemo666/anything/refs/heads/main/install_anytls.sh
+
+
+
 使用 Nginx 并不会削弱 AnyTLS 的功能，反而是给它穿上了一层更完美的“伪装衣”，安全性其实是提升了。
 
 具体来说：
